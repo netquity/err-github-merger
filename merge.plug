@@ -1,0 +1,9 @@
+[Core]
+Name = merge
+Module = merge.py
+
+[Documentation]
+Description = Merge GitHub PRs your way
+
+[Python]
+Version = 3
