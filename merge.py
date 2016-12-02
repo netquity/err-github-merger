@@ -185,6 +185,11 @@ class Merge(BotPlugin):  # pylint:disable=too-many-ancestors
 
         Return a string in the form: Firstname Lastname <email@domain.com>
         """
+        Merge.run_subprocess(
+            ['git', 'fetch', '-p'],
+            cwd=project_root,
+        )
+
         # A bad ref can produce too long of a result or an empty one
         author = Merge.run_subprocess(
             [
