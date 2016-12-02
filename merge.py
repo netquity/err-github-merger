@@ -43,7 +43,7 @@ class Merge(BotPlugin):  # pylint:disable=too-many-ancestors
             if not os.path.exists(os.path.join(self.config['REPOS_ROOT'], project_name)):
                 # Possible race condition if folder somehow gets created between check and creation
                 Merge.run_subprocess(
-                    ['git', 'clone', self.config['projects'][project_name]['repo_url']],
+                    ['git', 'clone', self.config['projects'][project_name]],
                     cwd=self.config['REPOS_ROOT'],
                 )
 
@@ -54,10 +54,8 @@ class Merge(BotPlugin):  # pylint:disable=too-many-ancestors
             # 'MERGE_FLAGS': '--no-ff',
             # 'MERGE_COMMIT_TEMPLATE': '',
             'projects': {
-                'some-project': {  # Name of the project in GitHub
-                    'repo_url': 'git@github.com:netquity/some-project.git',
-                    'github_org': 'netquity',
-                },
+                # Name of the project in GitHub
+                'some-project': 'git@github.com:netquity/some-project.git',
             },
         }
 
@@ -106,13 +104,15 @@ class Merge(BotPlugin):  # pylint:disable=too-many-ancestors
 
         # TODO: trap your exceptions!
         project_root = self.get_project_root(project_name)
-        Merge.git_merge_branch_to_develop(project_root, branch_name)
+        author = Merge.git_get_branch_author(project_root, branch_name)
+
+        Merge.git_merge_branch_to_develop(project_root, branch_name, author, msg.frm.fullname)
         Merge.git_push_develop_to_origin(project_root)
         Merge.git_delete_branch(project_root, branch_name)
 
         return self.send_card(
             in_reply_to=msg,
-            pretext='I was able to complete the %s merge for you.' % project_name,
+            summary='I was able to complete the %s merge for you.' % project_name,
             fields=(
                 ('Receiver Branch', 'develop'),
                 ('Giver Branch', branch_name),
@@ -134,12 +134,29 @@ class Merge(BotPlugin):  # pylint:disable=too-many-ancestors
             )
 
     @staticmethod
-    def git_merge_branch_to_develop(project_root: str, branch_name: str):  # TODO: accept commit hash?
-        """Merge the given branch into develop."""
+    def git_merge_branch_to_develop(
+            project_root: str,
+            branch_name: str,
+            author: str,
+            invoking_user: str,
+    ):
+        """Merge the given branch into develop.
+
+        For the merge commit, use the:
+            - the bot user as the committer
+            - author of the branch as the author of the giver commit as the author
+            - full name of the invoking user (the user who issues the command) as part of the commit message
+        """
         for argv in [
                 ['fetch', '-p'],
                 ['checkout', '-B', 'develop', 'origin/develop'],
-                ['merge', '--no-ff', '-m', 'Merge {} to develop'.format(branch_name), 'origin/{}'.format(branch_name)],
+                [
+                    'merge', '--no-ff',
+                    '-m', 'Merge {} to develop'.format(branch_name),
+                    '-m', 'Branch merged by {}.'.format(invoking_user),
+                    'origin/{}'.format(branch_name),
+                ],
+                ['commit', '--no-edit', '--amend', '--author={}'.format(author)],
                 ['push', 'origin', 'develop'],
         ]:
             Merge.run_subprocess(
@@ -157,14 +174,30 @@ class Merge(BotPlugin):  # pylint:disable=too-many-ancestors
 
     @staticmethod
     def git_delete_branch(project_root: str, branch_name: str):
-        for argv in [
-                ['push', 'origin', '--delete', '{}'.format(branch_name)],
-                ['branch', '-D', '{}'.format(branch_name)],
-        ]:
-            Merge.run_subprocess(
-                ['git'] + argv,
-                cwd=project_root,
-            )
+        Merge.run_subprocess(
+            ['git', 'push', 'origin', '--delete', '{}'.format(branch_name)],
+            cwd=project_root,
+        )
+
+    @staticmethod
+    def git_get_branch_author(project_root: str, branch_name: str) -> str:
+        """Get the author information for the given branch.
+
+        Return a string in the form: Firstname Lastname <email@domain.com>
+        """
+        # A bad ref can produce too long of a result or an empty one
+        author = Merge.run_subprocess(
+            [
+                'git', 'for-each-ref', '--format="%(authorname) %(authoremail)"', 'refs/remotes/origin/{}'.format(
+                    branch_name,
+                ),
+            ],
+            cwd=project_root,
+        ).stdout.strip()  # Get rid of the newline character at the end
+
+        # A bad ref can produce too long of a result or an empty one
+        assert len(author.split('\n')) == 1 and len(author)
+        return author
 
     @staticmethod
     def run_subprocess(args: list, cwd: str=None):
