@@ -7,3 +7,7 @@ Description = Merge GitHub PRs your way
 
 [Python]
 Version = 3
+
+[Errbot]
+min = 5.0.0
+max = 5.0.0
