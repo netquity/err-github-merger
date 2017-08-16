@@ -7,7 +7,7 @@ import sys
 import subprocess
 
 from errbot import BotPlugin, arg_botcmd, ValidationException
-from errbot.utils import recurse_check_structure
+from errbot.botplugin import recurse_check_structure
 
 logger = logging.getLogger(__file__)
 

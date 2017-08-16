@@ -9,5 +9,5 @@ Description = Merge GitHub PRs your way
 Version = 3
 
 [Errbot]
-min = 5.0.0
-max = 5.0.0
+min = 5.1.1
+max = 5.1.1
