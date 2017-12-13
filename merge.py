@@ -136,7 +136,7 @@ class Merge(BotPlugin):  # pylint:disable=too-many-ancestors
         try:
             for argv in [
                     ['fetch', '-p'],
-                    ['rev-parse', '--verify' 'origin/%s' % branch_name],
+                    ['rev-parse', '--verify', 'origin/%s' % branch_name],
             ]:
                 Merge.run_subprocess(
                     ['git'] + argv,
