@@ -89,8 +89,9 @@ class Merge(BotPlugin):  # pylint:disable=too-many-ancestors
     ) -> str:
         """For the given project, merge the given branch to develop and push back to origin."""
         # TODO: validate project_name
+        project_root = self.get_project_root(project_name)
         try:
-            self.validate_branch(branch_name)
+            self.validate_branch(branch_name, project_root)
         except ValidationException as exc:
             failure_message = '%s is not a valid branch choice.' % branch_name
             self.log.exception(
@@ -103,7 +104,6 @@ class Merge(BotPlugin):  # pylint:disable=too-many-ancestors
             )
 
         # TODO: trap your exceptions!
-        project_root = self.get_project_root(project_name)
         author = Merge.git_get_branch_author(project_root, branch_name)
 
         Merge.git_merge_branch_to_develop(project_root, branch_name, author, msg.frm.fullname)
@@ -124,7 +124,7 @@ class Merge(BotPlugin):  # pylint:disable=too-many-ancestors
         """Get the root of the project's Git repo locally."""
         return self.config['REPOS_ROOT'] + project_name
 
-    def validate_branch(self, branch_name: str):
+    def validate_branch(self, branch_name: str, project_root: str):
         """Check that the given branch is not on the list of forbidden branches."""
         if branch_name in self.config['forbidden_branches']:
             raise ValidationException(
@@ -132,6 +132,21 @@ class Merge(BotPlugin):  # pylint:disable=too-many-ancestors
                     ', '.join(str(branch) for branch in self.config['forbidden_branches'])
                 )
             )
+        # TODO: make sure branch exists!
+        try:
+            for argv in [
+                    ['fetch', '-p'],
+                    ['rev-parse', '--verify' 'origin/%s' % branch_name],
+            ]:
+                Merge.run_subprocess(
+                    ['git'] + argv,
+                    cwd=project_root,
+                )
+        except subprocess.CalledProcessError as exc:
+            raise ValidationException(
+                '{} is not a valid branch name.'.format(branch_name)
+            )
+
 
     @staticmethod
     def git_merge_branch_to_develop(
