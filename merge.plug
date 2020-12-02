@@ -10,4 +10,4 @@ Version = 3
 
 [Errbot]
 min = 5.1.1
-max = 6.0.0
+max = 6.1.6
