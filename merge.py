@@ -164,7 +164,7 @@ class Merge(BotPlugin):  # pylint:disable=too-many-ancestors
         """
         for argv in [
                 ['fetch', '-p'],
-                ['checkout', '-B', 'develop', 'origin/develop'],
+                ['checkout', '-f', '-B', 'develop', 'origin/develop'],
                 [
                     'merge', '--no-ff',
                     '-m', 'Merge {} to develop'.format(branch_name),
